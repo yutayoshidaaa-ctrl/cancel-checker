@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>解約・オプション解約 紐付けチェック</title>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #111827;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --accent-ok: #16a34a;
+      --accent-ng: #ef4444;
+      --accent-warn: #f59e0b;
+      --border-soft: #1f2933;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 13px;
+      background: radial-gradient(circle at top, #1f2937 0, #020617 55%, #000 100%);
+      color: var(--text-main);
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.04em; }
+    .subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 18px; }
+    .app-shell {
+      max-width: 1200px; margin: 0 auto;
+      background: linear-gradient(135deg, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.95));
+      border-radius: 18px; padding: 1px;
+      box-shadow: 0 18px 45px rgba(0,0,0,.6), 0 0 0 1px rgba(148, 163, 184, .25);
+    }
+    .app-inner {
+      background: radial-gradient(circle at top left, #1f2937 0, #020617 60%);
+      border-radius: 17px;
+      padding: 18px 20px 18px;
+    }
+    .header-row {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; margin-bottom: 14px;
+    }
+    .badge-env {
+      font-size: 10px; padding: 3px 8px; border-radius: 999px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: #e5e7eb;
+    }
+    .row { margin-bottom: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .row label { min-width: 120px; font-size: 12px; color: var(--text-muted); }
+    input[type="file"] {
+      font-size: 12px; color: var(--text-main);
+      background: #020617; border-radius: 6px;
+      border: 1px solid var(--border-soft); padding: 4px 6px;
+    }
+    input[type="file"]::file-selector-button {
+      border: none; border-radius: 6px; padding: 4px 10px; margin-right: 8px;
+      background: #111827; color: var(--text-main);
+      cursor: pointer; border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 11px;
+    }
+    input[type="file"]::file-selector-button:hover { background: #1f2937; }
+    button {
+      border-radius: 6px; border: none; padding: 6px 14px; font-size: 12px;
+      cursor: pointer; transition: all 0.15s ease;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    #checkBtn {
+      background: var(--accent); color: white;
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 0 10px 25px rgba(37, 99, 235, 0.35);
+    }
+    #checkBtn:hover { transform: translateY(-1px); box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45); }
+    .filter-buttons button {
+      background: #020617; color: var(--text-main);
+      border: 1px solid var(--border-soft); padding: 4px 10px;
+    }
+    .filter-buttons button:hover { background: #111827; }
+    .filter-buttons button.active {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: #dbeafe;
+    }
+    .stats-row {
+      font-size: 12px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .stat-pill {
+      padding: 2px 10px; border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.85);
+    }
+    .stat-pill.ok { border-color: var(--accent-ok); color: #bbf7d0; }
+    .stat-pill.ng { border-color: var(--accent-ng); color: #fecaca; }
+    .stat-pill.warn { border-color: var(--accent-warn); color: #fde68a; }
+
+    table {
+      border-collapse: collapse; width: 100%;
+      table-layout: fixed; font-size: 11px;
+      margin-top: 6px; border-radius: var(--radius);
+      overflow: hidden; background: #020617;
+    }
+    th, td {
+      border: 1px solid #111827; padding: 4px 6px;
+      text-align: left; vertical-align: top; word-wrap: break-word;
+    }
+    th {
+      background: #020617; color: var(--text-muted);
+      font-weight: 500; position: sticky; top: 0; z-index: 1;
+    }
+    tr.ok { background: rgba(22, 163, 74, 0.11); }
+    tr.pending { background: rgba(248, 113, 113, 0.08); }
+    tr.unknown { background: rgba(245, 158, 11, 0.10); }
+
+    .chip-ok, .chip-ng, .chip-warn {
+      font-size: 10px; padding: 2px 7px;
+      border-radius: 999px; display: inline-block;
+    }
+    .chip-ok { background: rgba(34, 197, 94, 0.18); color: #bbf7d0; border: 1px solid rgba(34, 197, 94, 0.6); }
+    .chip-ng { background: rgba(239, 68, 68, 0.18); color: #fecaca; border: 1px solid rgba(248, 113, 113, 0.6); }
+    .chip-warn { background: rgba(245, 158, 11, 0.18); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.6); }
+
+    .fulltext {
+      display: none; white-space: pre-wrap; background: #020617;
+      border: 1px solid #1f2937; padding: 6px; margin-top: 4px;
+      max-height: 210px; overflow-y: auto; border-radius: 6px;
+      color: var(--text-main);
+    }
+    .btn-fulltext {
+      padding: 2px 8px; font-size: 10px; border-radius: 999px;
+      background: #020617; border: 1px solid var(--border-soft); color: var(--text-muted);
+    }
+    .btn-fulltext:hover { background: #111827; color: var(--text-main); }
+
+    #result {
+      max-height: 420px; overflow: auto; border-radius: var(--radius);
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      background: radial-gradient(circle at top left, #020617 0, #020617 60%);
+    }
+    h3 { margin: 12px 0 4px; font-size: 11px; color: var(--text-muted); }
+    #debug {
+      white-space: pre-wrap; font-family: Consolas, monospace;
+      border-radius: var(--radius); border: 1px solid #1f2937;
+      padding: 6px; max-height: 180px; overflow-y: auto;
+      background: #020617; font-size: 10px; color: #9ca3af;
+    }
+    .note { color: var(--text-muted); font-size: 11px; margin-top: 6px; }
+  </style>
+</head>
+
+<body>
+  <div class="app-shell">
+    <div class="app-inner">
+      <div class="header-row">
+        <div>
+          <h1>解約・オプション解約 紐付けチェック</h1>
+          <div class="subtitle">依頼管理CSVと履歴CSVを突合し、未手配を洗い出す</div>
+        </div>
+        <div class="badge-env">internal tools / 地域創生</div>
+      </div>
+
+      <div class="row">
+        <label for="reqFile">依頼管理 CSV</label>
+        <input type="file" id="reqFile" accept=".csv,.txt" />
+      </div>
+      <div class="row">
+        <label for="hisFile">履歴 CSV</label>
+        <input type="file" id="hisFile" accept=".csv,.txt" />
+      </div>
+
+      <div class="row">
+        <button id="checkBtn">チェック実行</button>
+        <span class="note">※「解約／廃止／オプション解約」を含む履歴だけ対象（文章から判定）</span>
+      </div>
+
+      <div class="row filter-buttons">
+        <span style="font-size:11px; color:var(--text-muted);">表示切替：</span>
+        <button type="button" onclick="setFilter(this,'all')" class="active">すべて</button>
+        <button type="button" onclick="setFilter(this,'ok')">OKのみ</button>
+        <button type="button" onclick="setFilter(this,'pending')">未手配のみ</button>
+        <button type="button" onclick="setFilter(this,'unknown')">判定不可のみ</button>
+      </div>
+
+      <div class="stats-row">
+        <span>件数：</span>
+        <span class="stat-pill">合計 <span id="totalCount">0</span></span>
+        <span class="stat-pill ok">OK <span id="okCount">0</span></span>
+        <span class="stat-pill ng">未手配 <span id="ngCount">0</span></span>
+        <span class="stat-pill warn">判定不可 <span id="unknownCount">0</span></span>
+      </div>
+
+      <div id="result"></div>
+
+      <h3>デバッグログ</h3>
+      <pre id="debug"></pre>
+    </div>
+  </div>
+
+ <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+  // =====================================================
+  // ✅ 設定ゾーン（ヘッダ論理名）
+  // =====================================================
+
+  // 依頼管理 CSV
+  const REQ_SUPPLY_COL = "供給地点番号";
+  const REQ_COLS = {
+    reqNo: "依頼番号",
+    type: "依頼内容",
+    summary: "依頼概要",
+    reqDate: "依頼日",
+    cancelHope: "解約希望日",
+    base: "対象拠点",
+    handler: "対応者",
+    requester: "依頼者",
+    power: "現在の電力会社",
+    memo: "備考"
+  };
+
+  // 履歴 CSV
+  const HIS_COLS = {
+    date: "対応日",
+    time: "対応時間",
+    appNo: "申込書番号",
+    inquiry: "問合せ内容",
+    answer: "回答内容",
+    judge: "クレーム・解約・キャンセル判定"
+  };
+
+  // =====================================================
+  // 基本関数
+  // =====================================================
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result);
+      reader.onerror = e => reject(e);
+      // まずShift-JISで読む（文字化けするならUTF-8に変更）
+      reader.readAsText(file, "Shift-JIS");
+    });
+  }
+
+  function escapeHtml(text) {
+    if (!text) return "";
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function toggleFullText(btn) {
+    const div = btn.nextElementSibling;
+    if (div.style.display === "none" || div.style.display === "") {
+      div.style.display = "block";
+      btn.textContent = "閉じる";
+    } else {
+      div.style.display = "none";
+      btn.textContent = "全文";
+    }
+  }
+
+  function filterRows(mode) {
+    const rows = document.querySelectorAll('#result tr.ok, #result tr.pending, #result tr.unknown');
+    rows.forEach(row => {
+      if (mode === 'all') row.style.display = '';
+      else row.style.display = row.classList.contains(mode) ? '' : 'none';
+    });
+  }
+
+  function setFilter(btn, mode) {
+    document.querySelectorAll('.filter-buttons button').forEach(b => {
+      if (b === btn) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+    filterRows(mode);
+  }
+
+  function normalizeHeader(s) {
+    return (s || "")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/\s+/g, "");
+  }
+
+  function findHeaderKey(row, logicalName) {
+    const targetNorm = normalizeHeader(logicalName);
+    const keys = Object.keys(row || {});
+    let hit = keys.find(k => normalizeHeader(k) === targetNorm);
+    if (hit) return hit;
+    hit = keys.find(k => normalizeHeader(k).includes(targetNorm));
+    return hit || null;
+  }
+
+  function parseCsv(text) {
+    let result = Papa.parse(text, { header: true, skipEmptyLines: true, delimiter: "\t" });
+    const firstRow = result.data[0] || {};
+    if (Object.keys(firstRow).length <= 1) {
+      result = Papa.parse(text, { header: true, skipEmptyLines: true });
+    }
+    return result.data;
+  }
+
+  // =====================================================
+  // 抽出ロジック
+  // =====================================================
+
+  // 履歴・依頼管理どちらでも：供給地点番号らしきものを抽出（15桁以上）
+  function extractSupplyPoints(text) {
+    if (!text) return [];
+    const s = String(text);
+    const hits = [];
+
+    // 「供給地点番号：XXXXXXXX」/「地点番号：XXXXXXXX」
+    for (const m of s.matchAll(/(?:供給地点番号|地点番号)[:：]?\s*([0-9]{10,})/g)) {
+      hits.push(m[1]);
+    }
+
+    // 「XXXXXXXX（地点番号）」パターン
+    for (const m of s.matchAll(/([0-9]{10,})\s*[（(]\s*地点番号\s*[）)]/g)) {
+      hits.push(m[1]);
+    }
+
+    // 15桁以上に絞る（電話番号などを除外）
+    const filtered = hits.filter(x => (x || "").length >= 15);
+
+    return Array.from(new Set(filtered));
+  }
+
+  // HP番号（申込書番号）抽出：HP + 数字
+  function extractHpNumbers(text) {
+    if (!text) return [];
+    const s = String(text).toUpperCase();
+    return Array.from(new Set([...s.matchAll(/\bHP\d{6,}\b/g)].map(m => m[0])));
+  }
+
+  // HF番号（申込番号）抽出：HF + 数字
+  function extractHfNumbers(text) {
+    if (!text) return [];
+    const s = String(text).toUpperCase();
+    return Array.from(new Set([...s.matchAll(/\bHF\d{6,}\b/g)].map(m => m[0])));
+  }
+
+  // 対象判定：いまは強制で全部対象（※後で戻せる）
+function detectCategory(inquiry, answer) {
+  const s = ((inquiry || "") + "\n" + (answer || "")).toString();
+
+  // ===== 共通：FMTっぽい要素（最低限）=====
+  const hasBullet = /●/.test(s); // FMTはほぼ●が並ぶ
+  const hasAppNo  = /申込書番号\s*[:：]/.test(s);
+
+  // ===== ① 電気廃止FMT（スコア方式）=====
+  // 見出し【電気廃止】が最強。なくても項目が揃えば拾う
+  let elecScore = 0;
+  if (/【\s*電気廃止\s*】/.test(s)) elecScore += 3;
+  if (/解約希望日\s*[:：]/.test(s)) elecScore += 1;
+  if (/廃止日\s*[:：]/.test(s)) elecScore += 1;
+  if (/解約住所\s*[:：]/.test(s)) elecScore += 1;
+  if (/(廃止する地点|供給地点番号|地点番号)\s*[:：]/.test(s)) elecScore += 1;
+  if (/廃止理由\s*[:：]/.test(s)) elecScore += 1;
+
+  // 電気廃止として成立条件：●がある & 申込書番号あり & スコア>=4
+  const isElec = hasBullet && hasAppNo && elecScore >= 4;
+
+  // ===== ② ガス廃止FMT =====
+  let gasScore = 0;
+  if (/【\s*ガス廃止\s*】/.test(s)) gasScore += 3;
+  if (/(閉栓日|閉栓理由)\s*[:：]/.test(s)) gasScore += 1;
+  if (/解約住所\s*[:：]/.test(s)) gasScore += 1;
+  if (/(拠点番号|地点番号|供給地点番号)\s*[:：]/.test(s)) gasScore += 1;
+  if (/時間帯指定\s*[:：]/.test(s)) gasScore += 1;
+
+  const isGas = hasBullet && hasAppNo && gasScore >= 4;
+
+  // ===== ③ オプション解約FMT =====
+  let opScore = 0;
+  if (/解約OP\s*[:：]/.test(s)) opScore += 3;         // 見出し
+  if (/対象の供給地点番号\s*[:：]/.test(s)) opScore += 2; // 必須
+  if (/解約受付日\s*[:：]/.test(s)) opScore += 1;
+  if (/解約日\s*[:：]/.test(s)) opScore += 1;
+  if (/何月分まで料金が発生するのか\s*[:：]/.test(s)) opScore += 1;
+
+  const isOp = opScore >= 4; // オプションは●無しでも成立する場合あるのでbulletは必須にしない
+
+  // ===== 判定 =====
+  if (isOp) return "オプション解約";
+  if (isElec) return "解約(電気廃止)";
+  if (isGas) return "解約(ガス廃止)";
+
+  // FMTが成立してないものは表示しない（ここで「未手配のゴミ」が消える）
+  return "対象外";
+}
+
+
+
+
+  // =====================================================
+  // メイン
+  // =====================================================
+  document.getElementById("checkBtn").addEventListener("click", async () => {
+    const reqFile = document.getElementById("reqFile").files[0];
+    const hisFile = document.getElementById("hisFile").files[0];
+
+    if (!reqFile || !hisFile) {
+      alert("依頼管理CSVと履歴CSV、両方選択してください。");
+      return;
+    }
+
+    const debugLines = [];
+
+    const reqText = await readFile(reqFile);
+    const hisText = await readFile(hisFile);
+
+    const reqData = parseCsv(reqText);
+    const hisData = parseCsv(hisText);
+
+    if (!reqData.length) { alert("依頼管理CSVのデータが読み込めませんでした。"); return; }
+    if (!hisData.length) { alert("履歴CSVのデータが読み込めませんでした。"); return; }
+
+    const reqFirst = reqData[0] || {};
+    const hisFirst = hisData[0] || {};
+
+    // 強制デバッグ：ヘッダ確認
+    debugLines.push("=== 履歴CSV ヘッダ一覧 ===");
+    debugLines.push(Object.keys(hisFirst || {}).join(" / "));
+    debugLines.push("=== 依頼管理CSV ヘッダ一覧 ===");
+    debugLines.push(Object.keys(reqFirst || {}).join(" / "));
+    debugLines.push("=== 履歴CSV 先頭1行（JSON） ===");
+    debugLines.push(JSON.stringify(hisData[0] || {}, null, 2).slice(0, 2000));
+
+    // 実ヘッダ名を決定（揺れ吸収）
+    const REQ_SUPPLY = findHeaderKey(reqFirst, REQ_SUPPLY_COL);
+    if (!REQ_SUPPLY) {
+      const keys = Object.keys(reqFirst || {});
+      alert(
+        `依頼管理CSVに「${REQ_SUPPLY_COL}」が見つかりません。\n\n` +
+        `【検出されたヘッダ一覧】\n` + keys.join("\n")
+      );
+      return;
+    }
+
+    const REQ_REQNO   = findHeaderKey(reqFirst, REQ_COLS.reqNo) || REQ_COLS.reqNo;
+    const REQ_TYPE    = findHeaderKey(reqFirst, REQ_COLS.type) || REQ_COLS.type;
+    const REQ_SUMMARY = findHeaderKey(reqFirst, REQ_COLS.summary) || REQ_COLS.summary;
+    const REQ_REQDATE = findHeaderKey(reqFirst, REQ_COLS.reqDate) || REQ_COLS.reqDate;
+    const REQ_HOPE    = findHeaderKey(reqFirst, REQ_COLS.cancelHope) || REQ_COLS.cancelHope;
+    const REQ_BASE    = findHeaderKey(reqFirst, REQ_COLS.base) || REQ_COLS.base;
+    const REQ_HANDLER = findHeaderKey(reqFirst, REQ_COLS.handler) || REQ_COLS.handler;
+    const REQ_REQUESTER = findHeaderKey(reqFirst, REQ_COLS.requester) || REQ_COLS.requester;
+    const REQ_POWER   = findHeaderKey(reqFirst, REQ_COLS.power) || REQ_COLS.power;
+    const REQ_MEMO    = findHeaderKey(reqFirst, REQ_COLS.memo) || REQ_COLS.memo;
+
+    const HIS_DATE   = findHeaderKey(hisFirst, HIS_COLS.date) || HIS_COLS.date;
+    const HIS_TIME   = findHeaderKey(hisFirst, HIS_COLS.time) || HIS_COLS.time;
+    const HIS_APPNO  = findHeaderKey(hisFirst, HIS_COLS.appNo) || HIS_COLS.appNo;
+    const HIS_INQ    = findHeaderKey(hisFirst, HIS_COLS.inquiry) || HIS_COLS.inquiry;
+    const HIS_ANS    = findHeaderKey(hisFirst, HIS_COLS.answer) || HIS_COLS.answer;
+    const HIS_JUDGE  = findHeaderKey(hisFirst, HIS_COLS.judge) || HIS_COLS.judge;
+
+    debugLines.push("依頼管理: 供給地点番号ヘッダ=" + REQ_SUPPLY);
+    debugLines.push("履歴: 回答内容ヘッダ=" + HIS_ANS);
+
+    // =====================================================
+    // 依頼管理 → Map化（地点番号 / HP / HF）
+    // =====================================================
+    const reqMapSP = {}; // supplyPoint -> [info...]
+    const reqMapHP = {}; // HPxxxx -> [info...]
+    const reqMapHF = {}; // HFxxxx -> [info...]
+
+    reqData.forEach(row => {
+      const supplyCell = row[REQ_SUPPLY] || "";
+      const memoCell = (row[REQ_MEMO] || "");
+
+      const spList = extractSupplyPoints(supplyCell);
+      const hpList = extractHpNumbers(supplyCell + "\n" + memoCell);
+      const hfList = extractHfNumbers(supplyCell + "\n" + memoCell);
+
+      if (!spList.length && !hpList.length && !hfList.length) return;
+
+      const info = {
+        reqNo: row[REQ_REQNO] || "",
+        type: row[REQ_TYPE] || "",
+        summary: row[REQ_SUMMARY] || "",
+        reqDate: row[REQ_REQDATE] || "",
+        cancelHope: row[REQ_HOPE] || "",
+        base: row[REQ_BASE] || "",
+        handler: row[REQ_HANDLER] || "",
+        requester: row[REQ_REQUESTER] || "",
+        power: row[REQ_POWER] || "",
+        memo: memoCell || "",
+        supplyRaw: supplyCell
+      };
+
+      spList.forEach(sp => {
+        if (!reqMapSP[sp]) reqMapSP[sp] = [];
+        reqMapSP[sp].push(info);
+      });
+      hpList.forEach(hp => {
+        if (!reqMapHP[hp]) reqMapHP[hp] = [];
+        reqMapHP[hp].push(info);
+      });
+      hfList.forEach(hf => {
+        if (!reqMapHF[hf]) reqMapHF[hf] = [];
+        reqMapHF[hf].push(info);
+      });
+    });
+
+    debugLines.push("依頼管理: Map(地点番号)キー数=" + Object.keys(reqMapSP).length);
+    debugLines.push("依頼管理: Map(HP)キー数=" + Object.keys(reqMapHP).length);
+    debugLines.push("依頼管理: Map(HF)キー数=" + Object.keys(reqMapHF).length);
+
+    // =====================================================
+    // 結果テーブル
+    // =====================================================
+    let html = `
+      <table>
+        <tr>
+          <th style="width:92px;">対応日<br>対応時間</th>
+          <th style="width:92px;">カテゴリ</th>
+          <th style="width:95px;">申込書番号</th>
+          <th style="width:150px;">抽出した地点番号<br>(履歴)</th>
+          <th style="width:90px;">依頼番号<br>(依頼管理)</th>
+          <th style="width:110px;">依頼内容</th>
+          <th style="width:92px;">依頼日</th>
+          <th style="width:92px;">解約希望日</th>
+          <th style="width:120px;">対応者 / 依頼者</th>
+          <th style="width:110px;">現在の電力会社</th>
+          <th style="width:190px;">回答内容（履歴）</th>
+          <th style="width:80px;">結果</th>
+        </tr>
+    `;
+
+    let total = 0, ok = 0, ng = 0, unknown = 0;
+
+    // サンプルログ（最初の3件）
+    window.__dbgCount = 0;
+
+    hisData.forEach(hRow => {
+      const inq = hRow[HIS_INQ] || "";
+      const ans = hRow[HIS_ANS] || "";
+      const category = detectCategory(inq, ans);
+      if (category === "対象外") return;
+
+      if (window.__dbgCount < 3) {
+        debugLines.push("----- SAMPLE #" + (window.__dbgCount + 1) + " -----");
+        debugLines.push("[問合せ内容] " + String(inq).slice(0, 200).replace(/\n/g, "\\n"));
+        debugLines.push("[回答内容] " + String(ans).slice(0, 200).replace(/\n/g, "\\n"));
+        window.__dbgCount++;
+      }
+
+      total++;
+
+      const date = hRow[HIS_DATE] || "";
+      const time = hRow[HIS_TIME] || "";
+      const appNo = String(hRow[HIS_APPNO] || "").toUpperCase().trim();
+
+      // ★ここが重要：supplies を必ず作る（回答＋問合せの両方から）
+      const supplies = extractSupplyPoints(ans + "\n" + inq);
+
+      // HP/HFも本文から拾う（補助キー）
+      const hpInText = extractHpNumbers(ans + "\n" + inq);
+      const hfInText = extractHfNumbers(ans + "\n" + inq);
+
+      let matches = null;
+      let matchedBy = "";
+
+      // 1) 地点番号で突合
+      const spHit = supplies.find(sp => reqMapSP[sp] && reqMapSP[sp].length);
+      if (spHit) {
+        matches = reqMapSP[spHit];
+        matchedBy = "地点番号";
+      }
+
+      // 2) 申込書番号(HP)で突合（列appNo or 本文）
+      if (!matches) {
+        const hpCandidates = [];
+        if (/^HP\d+$/i.test(appNo)) hpCandidates.push(appNo);
+        hpCandidates.push(...hpInText);
+        const hpHit = hpCandidates.find(hp => reqMapHP[hp] && reqMapHP[hp].length);
+        if (hpHit) {
+          matches = reqMapHP[hpHit];
+          matchedBy = "申込書番号(HP)";
+        }
+      }
+
+      // 3) 申込番号(HF)で突合（本文）
+      if (!matches) {
+        const hfHit = hfInText.find(hf => reqMapHF[hf] && reqMapHF[hf].length);
+        if (hfHit) {
+          matches = reqMapHF[hfHit];
+          matchedBy = "申込番号(HF)";
+        }
+      }
+
+      // 判定表示
+      if (matches) {
+        ok++;
+        matches.forEach(m => {
+          html += `
+            <tr class="ok">
+              <td>${escapeHtml(date)}<br>${escapeHtml(time)}</td>
+              <td>${escapeHtml(category)}</td>
+              <td>${escapeHtml(appNo)}</td>
+              <td>${escapeHtml(supplies.join("\n"))}</td>
+              <td>${escapeHtml(m.reqNo)}</td>
+              <td>${escapeHtml(m.type || m.summary)}</td>
+              <td>${escapeHtml(m.reqDate)}</td>
+              <td>${escapeHtml(m.cancelHope)}</td>
+              <td>${escapeHtml(m.handler)}<br>${escapeHtml(m.requester)}</td>
+              <td>${escapeHtml(m.power)}</td>
+              <td>
+                <div style="color:#9ca3af; font-size:10px; margin-bottom:4px;">一致キー：${escapeHtml(matchedBy)}</div>
+                <button type="button" class="btn-fulltext" onclick="toggleFullText(this)">全文</button>
+                <div class="fulltext">${escapeHtml(ans)}</div>
+              </td>
+              <td><span class="chip-ok">OK</span></td>
+            </tr>
+          `;
+        });
+      } else {
+        // キーが何も取れない → 判定不可
+        const hasKey = supplies.length || /^HP\d+$/i.test(appNo) || hpInText.length || hfInText.length;
+        if (!hasKey) {
+          unknown++;
+          html += `
+            <tr class="unknown">
+              <td>${escapeHtml(date)}<br>${escapeHtml(time)}</td>
+              <td>${escapeHtml(category)}</td>
+              <td>${escapeHtml(appNo)}</td>
+              <td></td>
+              <td></td><td></td><td></td><td></td><td></td><td></td>
+              <td>
+                <button type="button" class="btn-fulltext" onclick="toggleFullText(this)">全文</button>
+                <div class="fulltext">${escapeHtml(ans)}</div>
+              </td>
+              <td><span class="chip-warn">判定不可</span></td>
+            </tr>
+          `;
+        } else {
+          ng++;
+          html += `
+            <tr class="pending">
+              <td>${escapeHtml(date)}<br>${escapeHtml(time)}</td>
+              <td>${escapeHtml(category)}</td>
+              <td>${escapeHtml(appNo)}</td>
+              <td>${escapeHtml(supplies.join("\n"))}</td>
+              <td></td><td></td><td></td><td></td><td></td><td></td>
+              <td>
+                <button type="button" class="btn-fulltext" onclick="toggleFullText(this)">全文</button>
+                <div class="fulltext">${escapeHtml(ans)}</div>
+              </td>
+              <td><span class="chip-ng">未手配</span></td>
+            </tr>
+          `;
+        }
+      }
+    });
+
+    html += "</table>";
+
+    document.getElementById("result").innerHTML = html;
+    document.getElementById("totalCount").textContent = total;
+    document.getElementById("okCount").textContent = ok;
+    document.getElementById("ngCount").textContent = ng;
+    document.getElementById("unknownCount").textContent = unknown;
+    document.getElementById("debug").textContent = debugLines.join("\n");
+
+    setFilter(document.querySelector('.filter-buttons button.active'), 'all');
+  });
+</script>
+
+</body>
+</html>
