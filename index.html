@@ -347,10 +347,24 @@ function extractHpNumbers(text) {
  */
 // ✅ オプション解約を完全に除外するロジック
  // ✅ オプション解約を「最優先で」完全に排除するロジック
-  function detectCategory(inquiry, answer) {
+  function detectCategory(inquiry, answer, reqDateStr) {
     const s = ((inquiry || "") + "\n" + (answer || ""))
       .replace(/[！-～]/g, t => String.fromCharCode(t.charCodeAt(0) - 0xfee0));
     
+    // --- 【追加】今月の依頼かどうかを判定するロジック ---
+    const now = new Date();
+    // 実行時の年月（例: "2026/3"）
+    const currentYM = now.getFullYear() + "/" + (now.getMonth() + 1);
+
+    if (reqDateStr) {
+      const d = new Date(reqDateStr);
+      const reqYM = d.getFullYear() + "/" + (d.getMonth() + 1);
+      
+      // 年月が一致しない場合は「対象外」として弾く
+      if (currentYM !== reqYM) {
+        return "対象外";
+      }
+    }
     // 1. 強制除外フィルタ（ここに含まれる文言があれば、他がどうあれ即「対象外」）
     // 判定に使っているキーワードを個別に精査しました
     const excludeKeywords = [
