@@ -566,6 +566,11 @@ function extractHpNumbers(text) {
     window.__dbgCount = 0;
 
     hisData.forEach(hRow => {
+const rowDateStr = hRow[HIS_DATE] || "";
+      if (rowDateStr && !rowDateStr.startsWith("2026")) {
+        return; 
+      }
+      
       const inq = hRow[HIS_INQ] || "";
       const ans = hRow[HIS_ANS] || "";
       const category = detectCategory(inq, ans);
