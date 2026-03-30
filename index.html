@@ -308,15 +308,22 @@
   // =====================================================
 
   // 履歴・依頼管理どちらでも：供給地点番号らしきものを抽出（15桁以上）
-  function extractSupplyPoints(text) {
+  // 供給地点番号抽出：文中の15桁以上の数字をすべて拾う（スラッシュ区切り対応）
+function extractSupplyPoints(text) {
   if (!text) return [];
   const s = String(text);
-  
-  // 文中の「15桁以上の連続する数字」をすべて抽出する（区切り文字に左右されない）
+  // 15桁以上の連続する数字をすべて抽出
   const hits = s.match(/[0-9]{15,}/g) || [];
-  
-  // 重複を排除して返す
   return Array.from(new Set(hits));
+}
+
+// 申込書番号抽出：HEHAHO / TUIKOT / HP / HF などに対応
+function extractHpNumbers(text) {
+  if (!text) return [];
+  const s = String(text).toUpperCase();
+  // 英字で始まり、その後に数字が続くパターンを広く拾う
+  const regex = /\b([A-Z]+)\d{5,}\b/g;
+  return Array.from(new Set([...s.matchAll(regex)].map(m => m[0])));
 }
 
   // HP番号（申込書番号）抽出：HP + 数字
