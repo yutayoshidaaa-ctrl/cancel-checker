@@ -341,24 +341,33 @@ function extractHpNumbers(text) {
   }
 
   // 対象判定：いまは強制で全部対象（※後で戻せる）
+/**
+ * カテゴリ判定：スコア方式で「解約依頼」「オプション解約」のみを抽出
+ * サンキューレター再送などの不要なログを「対象外」として除外します
+ */
 function detectCategory(inquiry, answer) {
-  const s = ((inquiry || "") + "\n" + (answer || "")).toString();
+  // 全角英数字・記号を半角に変換し、空白を除去して判定精度を上げる
+  const s = ((inquiry || "") + "\n" + (answer || ""))
+    .toString()
+    .replace(/[！-～]/g, function(tmp) {
+      return String.fromCharCode(tmp.charCodeAt(0) - 0xfee0);
+    });
 
-  // ===== 共通：FMTっぽい要素（最低限）=====
-  const hasBullet = /●/.test(s); // FMTはほぼ●が並ぶ
+  // ===== 共通：FMT（定型文）の基本要素 =====
+  const hasBullet = /●/.test(s); 
   const hasAppNo  = /申込書番号\s*[:：]/.test(s);
 
   // ===== ① 電気廃止FMT（スコア方式）=====
-  // 見出し【電気廃止】が最強。なくても項目が揃えば拾う
   let elecScore = 0;
   if (/【\s*電気廃止\s*】/.test(s)) elecScore += 3;
   if (/解約希望日\s*[:：]/.test(s)) elecScore += 1;
   if (/廃止日\s*[:：]/.test(s)) elecScore += 1;
   if (/解約住所\s*[:：]/.test(s)) elecScore += 1;
-  if (/(廃止する地点|供給地点番号|地点番号)\s*[:：]/.test(s)) elecScore += 1;
+  // 地点番号は重要度が高いため配点を2に強化
+  if (/(廃止する地点|供給地点番号|地点番号)\s*[:：]/.test(s)) elecScore += 2;
   if (/廃止理由\s*[:：]/.test(s)) elecScore += 1;
 
-  // 電気廃止として成立条件：●がある & 申込書番号あり & スコア>=4
+  // 判定：●があり、申込書番号があり、スコアが4以上
   const isElec = hasBullet && hasAppNo && elecScore >= 4;
 
   // ===== ② ガス廃止FMT =====
@@ -366,28 +375,50 @@ function detectCategory(inquiry, answer) {
   if (/【\s*ガス廃止\s*】/.test(s)) gasScore += 3;
   if (/(閉栓日|閉栓理由)\s*[:：]/.test(s)) gasScore += 1;
   if (/解約住所\s*[:：]/.test(s)) gasScore += 1;
-  if (/(拠点番号|地点番号|供給地点番号)\s*[:：]/.test(s)) gasScore += 1;
+  if (/(拠点番号|地点番号|供給地点番号)\s*[:：]/.test(s)) gasScore += 2;
   if (/時間帯指定\s*[:：]/.test(s)) gasScore += 1;
 
   const isGas = hasBullet && hasAppNo && gasScore >= 4;
 
   // ===== ③ オプション解約FMT =====
   let opScore = 0;
-  if (/解約OP\s*[:：]/.test(s)) opScore += 3;         // 見出し
-  if (/対象の供給地点番号\s*[:：]/.test(s)) opScore += 2; // 必須
+  if (/解約OP\s*[:：]/.test(s)) opScore += 3;
+  if (/対象の供給地点番号\s*[:：]/.test(s)) opScore += 2;
   if (/解約受付日\s*[:：]/.test(s)) opScore += 1;
   if (/解約日\s*[:：]/.test(s)) opScore += 1;
   if (/何月分まで料金が発生するのか\s*[:：]/.test(s)) opScore += 1;
 
-  const isOp = opScore >= 4; // オプションは●無しでも成立する場合あるのでbulletは必須にしない
+  const isOp = opScore >= 4;
 
-  // ===== 判定 =====
+  // ===== 最終判定 =====
   if (isOp) return "オプション解約";
   if (isElec) return "解約(電気廃止)";
   if (isGas) return "解約(ガス廃止)";
 
-  // FMTが成立してないものは表示しない（ここで「未手配のゴミ」が消える）
-  return "対象外";
+  return "対象外"; 
+}
+
+/**
+ * 供給地点番号抽出：スラッシュ区切りや複数拠点に対応
+ */
+function extractSupplyPoints(text) {
+  if (!text) return [];
+  const s = String(text);
+  // 15桁以上の連続する数字をすべて抽出（スラッシュや改行で並んでいてもOK）
+  const hits = s.match(/[0-9]{15,}/g) || [];
+  return Array.from(new Set(hits));
+}
+
+/**
+ * 申込書番号抽出：HEHAHO, TUIKOT, HP などの新旧形式に対応
+ */
+function extractHpNumbers(text) {
+  if (!text) return [];
+  const s = String(text).toUpperCase();
+  // 英字(2文字以上)＋数字(5文字以上) のパターンを抽出
+  const regex = /([A-Z]{2,})\d{5,}/g;
+  const hits = s.match(regex) || [];
+  return Array.from(new Set(hits));
 }
 
 
