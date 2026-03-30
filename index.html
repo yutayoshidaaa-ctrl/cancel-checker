@@ -309,25 +309,15 @@
 
   // 履歴・依頼管理どちらでも：供給地点番号らしきものを抽出（15桁以上）
   function extractSupplyPoints(text) {
-    if (!text) return [];
-    const s = String(text);
-    const hits = [];
-
-    // 「供給地点番号：XXXXXXXX」/「地点番号：XXXXXXXX」
-    for (const m of s.matchAll(/(?:供給地点番号|地点番号)[:：]?\s*([0-9]{10,})/g)) {
-      hits.push(m[1]);
-    }
-
-    // 「XXXXXXXX（地点番号）」パターン
-    for (const m of s.matchAll(/([0-9]{10,})\s*[（(]\s*地点番号\s*[）)]/g)) {
-      hits.push(m[1]);
-    }
-
-    // 15桁以上に絞る（電話番号などを除外）
-    const filtered = hits.filter(x => (x || "").length >= 15);
-
-    return Array.from(new Set(filtered));
-  }
+  if (!text) return [];
+  const s = String(text);
+  
+  // 文中の「15桁以上の連続する数字」をすべて抽出する（区切り文字に左右されない）
+  const hits = s.match(/[0-9]{15,}/g) || [];
+  
+  // 重複を排除して返す
+  return Array.from(new Set(hits));
+}
 
   // HP番号（申込書番号）抽出：HP + 数字
   function extractHpNumbers(text) {
