@@ -346,23 +346,31 @@ function extractHpNumbers(text) {
  * サンキューレター再送などの不要なログを「対象外」として除外します
  */
 // ✅ オプション解約を完全に除外するロジック
+ // ✅ オプション解約を「最優先で」完全に排除するロジック
   function detectCategory(inquiry, answer) {
-    // 全角を半角に変換して判定精度を上げる
     const s = ((inquiry || "") + "\n" + (answer || ""))
       .replace(/[！-～]/g, t => String.fromCharCode(t.charCodeAt(0) - 0xfee0));
     
-    // 1. オプション解約に関連するキーワードがある場合は、即座に「対象外」として返す
-    // ※「解約OP」「オプション」「付随サービス」などの文言をフックにします
-    if (/解約OP\s*[:：]/.test(s) || /オプション解約/.test(s) || /オプションの解約/.test(s)) {
+    // 1. 強制除外フィルタ（ここに含まれる文言があれば、他がどうあれ即「対象外」）
+    // 判定に使っているキーワードを個別に精査しました
+    const excludeKeywords = [
+      "オプション解約",
+      "オプションの解約",
+      "解約OP",
+      "サンキューレター", // 画像にある「サンキューレター再送」なども除外
+      "情報変更"
+    ];
+
+    if (excludeKeywords.some(kw => s.includes(kw))) {
       return "対象外";
     }
 
-    // 2. 電気・ガスの廃止判定
+    // 2. 電気・ガスの廃止判定（オプションではないものだけがここに来る）
     const hasBullet = /●/.test(s);
     let score = 0;
     
     // 強い判定キーワード
-    if (/【\s*(電気廃止|ガス廃止)\s*】/.test(s)) score += 3;
+    if (/【\s*(電気廃止|ガス廃止)\s*】/.test(s)) score += 5; // スコアを大幅に上げ、確実に判定
     
     // 必須項目に近いキーワード
     if (/(解約希望日|廃止日|閉栓日|解約住所|拠点番号|地点番号)\s*[:：]/.test(s)) score += 2;
@@ -370,8 +378,8 @@ function extractHpNumbers(text) {
     // 補足キーワード
     if (/申込書番号\s*[:：]/.test(s)) score += 1;
 
-    // スコアが一定以上（4点以上）かつ「●」が含まれる場合のみ「解約手配」とする
-    if (hasBullet && score >= 4) {
+    // 判定（●があり、かつスコアが高いものだけをカウント）
+    if (hasBullet && score >= 5) {
       return "解約手配";
     }
 
